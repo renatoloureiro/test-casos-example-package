@@ -13,6 +13,8 @@ Getting Started/	# Tutorials
 ├── SOS			  	# Tutorials showing how to setup different kinds of SOS problems
 
 Publications/ 					# Code from publications from the iFR-ACSO group
+├── Benchmark					# ACC25: Benchmarks of CaΣoS with other state-of-the art SOS toolboxes.
+├── Infinitesimal-MPC			# TAC25: Code to synthesize a pair of compatible CBF-CLF to approximate NMPC for Spacecraft Attitude Control.
 ├── Verify-Manifold-Spacecraft  # ECC26: Stability Verification on Manifolds with Applications in Spacecraft Attitude Control.
 ```
 
