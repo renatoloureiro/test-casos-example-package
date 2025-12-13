@@ -8,9 +8,9 @@ The example package itself does not not need to be installed. Only CaΣoS and a 
 ### Folder Structure
 
 ```text
-Getting Started/	# Tutorials
-├── Basics        	# Toolbox basics
-├── SOS			  	# How to setup different kinds of SOS problems
+Getting Started/				# Tutorials
+├── Basics        				# Toolbox basics
+├── SOS			  				# How to setup different kinds of SOS problems
 
 Publications/ 					# Code from publications of the iFR-ACSO group
 ├── Benchmark					# ACC25: Benchmarks of CaΣoS with other state-of-the art SOS toolboxes.
