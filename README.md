@@ -8,9 +8,12 @@ The example package itself does not not need to be installed. Only CaΣoS and a 
 ### Folder Structure
 
 ```text
-Getting Started/
-├── Basics        # Tutorials showing the toolbox basics
-├── SOS			  # Tutorials showing how to setup different kinds of SOS problems
+Getting Started/	# Tutorials
+├── Basics        	# Tutorials showing the toolbox basics
+├── SOS			  	# Tutorials showing how to setup different kinds of SOS problems
+
+Publications/ 					# Code from publications from the iFR-ACSO group
+├── Verify-Manifold-Spacecraft  # ECC26: Stability Verification on Manifolds with Applications in Spacecraft Attitude Control.
 ```
 
 
