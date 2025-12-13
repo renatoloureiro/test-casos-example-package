@@ -15,8 +15,8 @@ This repository contains tutorials, examples and implementations from paper or t
 
 ```text
 Getting Started/
-├── CBF_CLF_QP         # CBF-CLF synthesis and simulation
-
+├── Basics        # Tutorials showing the toolbox basics
+├── SOS			  # Tutorials showing how to setup different kinds of SOS problems
 ```
 
 
