@@ -1,3 +1,4 @@
+<p align="center">
 <img
   src="https://github.com/user-attachments/assets/4dbc28d3-d373-4ddf-9f26-8f10e72e6e8b#gh-light-mode-only"
   width="50%" />
@@ -5,7 +6,9 @@
 <img
   src="https://github.com/user-attachments/assets/0ee26ae5-68d5-48a7-b215-9cd8818e0114#gh-dark-mode-only"
   width="50%" />
-  
+</p>
+
+
 ----
 
 # CaΣoS-Example package
