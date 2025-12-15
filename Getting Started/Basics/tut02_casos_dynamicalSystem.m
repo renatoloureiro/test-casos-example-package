@@ -4,7 +4,9 @@
 %                    simple nonlinear dynamical system, compute a linear 
 %                    control law and setup a (simple) simulation.
 %
-% 
+%
+%   License: see License file of repository
+%
 % -----------------------------------------------------------------------
 
 

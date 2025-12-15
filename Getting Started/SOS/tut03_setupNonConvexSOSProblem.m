@@ -20,6 +20,9 @@
 %
 %           s is the only sought SOS decision varible and gamma the sought
 %           stable level set. No parameter are needed.
+%
+%   License: see License file of repository
+%
 % -----------------------------------------------------------------------
 
 

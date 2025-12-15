@@ -19,6 +19,9 @@
 %
 %           s is the only sought SOS decision varible. 
 %           No cost is assigned and no parameter are needed.
+%
+%   License: see License file of repository
+%
 % -----------------------------------------------------------------------
 
 

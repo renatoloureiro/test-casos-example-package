@@ -9,6 +9,8 @@
 %   Symbolic polynomial variables       casos.PS.sym
 %   Nmerical polynomial variables       casos.PD
 %
+%   License: see License file of repository
+%
 % -----------------------------------------------------------------------
 
 
