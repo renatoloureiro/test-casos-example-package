@@ -14,7 +14,7 @@
 
 # CaΣoS-Example package
 
-This repository contains tutorials, examples and implementations from paper or textbooks. The purpose is to provide an easy on-boarding with the CaΣoS  toolbox, a nonlinear optimization-oriented sum-of-squares toolbox based on the symbolic framework of CasADi.
+This repository contains tutorials, examples and implementations from paper or textbooks. The purpose is to provide an easy on-boarding with the CaΣoS toolbox, a nonlinear optimization-oriented sum-of-squares toolbox based on the symbolic framework of CasADi. New examples are continuously added.
 
 ### Installation
 The example package itself does not not need to be installed. Only CaΣoS and a supported conic solver is needed. Follow the instructions on the [Getting started](https://github.com/ifr-acso/casos/wiki#getting-started) page.
