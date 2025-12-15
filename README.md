@@ -25,6 +25,7 @@ Getting Started/				# Tutorials
 ├── Conic			  			# How to setup cone problem using sdpsol interface
 
 Systems and Control/ 			# Code from publications or textbooks
+├── NMPC						# Synthesis of terminal conditions for NMPC, infinitesimal-NMPC law synthesis
 ├── Stability					# Stability analysis, e.g., region-of-attraction estiamtion
 ├── Reachability				# Reachability analysis, e.g., inner-approximation of backward reachable set
 ```
