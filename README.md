@@ -1,13 +1,11 @@
 
-<p align="center">
-<img
-  src="https://github.com/user-attachments/assets/372f3428-89e8-4fa8-b5de-385d922d97da#gh-light-mode-only"
-  width="50%" />
 
 <img
-  src="https://github.com/user-attachments/assets/372f3428-89e8-4fa8-b5de-385d922d97da#gh-dark-mode-only"
-  width="50%" />
-</p>
+  src="https://github.com/iFR-ACSO/.github/blob/main/assets/logo-example-trans.png#gh-light-mode-only"
+  width="80%" />
+
+<img
+  src="https://github.com/iFR-ACSO/.github/blob/main/assets/logo-example-inverted.png#gh-dark-mode-only" width="80%" />
 
 
 ----
