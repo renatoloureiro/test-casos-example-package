@@ -2,15 +2,14 @@
 
 <img
   src="https://github.com/iFR-ACSO/.github/blob/main/assets/logo-example-trans.png#gh-light-mode-only"
-  width="80%" />
+  width="1000%" />
 
 <img
-  src="https://github.com/iFR-ACSO/.github/blob/main/assets/logo-example-inverted.png#gh-dark-mode-only" width="80%" />
+  src="https://github.com/iFR-ACSO/.github/blob/main/assets/logo-example-inverted.png#gh-dark-mode-only" width="100%" />
 
 
 ----
 
-# CaΣoS-Example package
 
 This repository contains tutorials, examples and implementations from paper or textbooks. The purpose is to provide an easy on-boarding with the CaΣoS toolbox, a nonlinear optimization-oriented sum-of-squares toolbox based on the symbolic framework of CasADi. New examples are continuously added.
 
