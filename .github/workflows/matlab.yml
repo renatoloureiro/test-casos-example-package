@@ -73,19 +73,17 @@ jobs:
           cat example_results.md
 
       # Upload results as artifacts
-      #- name: Upload test results
-      #  uses: actions/upload-artifact@v4
-      #  if: always()  # Run even if MATLAB commands fail
-      #  with:
-      #    name: example-results
-      #    path: |
-      #      example_results.md
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()  # Run even if MATLAB commands fail
+        with:
+          name: example-results
+          path: |
+            example_results.md
 
       # Add results to GitHub Step Summary
-      #- name: Add to GitHub Summary
-      #  if: always()
-      #  run: |
-      #    echo "# MATLAB Example Test Results" >> $GITHUB_STEP_SUMMARY
-      #    echo "" >> $GITHUB_STEP_SUMMARY
-      #    cat example_results.md >> $GITHUB_STEP_SUMMARY
-      #  shell: bash
+      - name: Add to GitHub Summary
+        if: always()
+        run: |
+          cat example_results.md >> $GITHUB_STEP_SUMMARY
+        shell: bash

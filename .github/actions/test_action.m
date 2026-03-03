@@ -18,15 +18,15 @@ fprintf(fid, '%s\n', md_content);
 status = 1;
 
 % run each demo file
-for idx=1:length(mfiles)
+for actidx=1:length(mfiles)
     try
         out = evalc('run(mfiles(idx).name)');
-        fprintf('SUCCESS: %s \n', mfiles(idx).name)
+        fprintf('SUCCESS: %s \n', mfiles(actidx).name)
     catch ME
         status = 0;
-        fprintf('FAILED:  %s \n', mfiles(idx).name)
+        fprintf('FAILED:  %s \n', mfiles(actidx).name)
         md_content = [sprintf('> [!WARNING]\n'),                        ...
-                      sprintf('**File:** `%s`  \n', mfiles(idx).name),  ...
+                      sprintf('**File:** `%s`  \n', mfiles(actidx).name),  ...
                       sprintf('**Error:** %s  \n', ME.message)];
         fprintf(fid, '%s\n', md_content);
     end
