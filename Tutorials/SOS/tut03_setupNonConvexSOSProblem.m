@@ -156,8 +156,8 @@ fprintf('Sequential SOS needed %d iterations and it took %f seconds.\n',[S.stats
 fprintf('------------------------------------------------------------------------------------------\n')
 % check the problem size of the underlying conic problem (same size for all
 % problems)
-fprintf('The A matrix has %d rows and  %d columns.\n',[S.stats.single_iterations{end}.conic.size_A(1),S.stats.single_iterations{end}.conic.size_A(2)])
-fprintf('The SDP has  %d decision variables.\n',S.stats.single_iterations{end}.conic.n_decVar)
+fprintf('The A matrix has %d rows and  %d columns.\n',[S.info.sossol_convex.sdpsol.conic.size_a(1),S.info.sossol_convex.sdpsol.conic.size_a(2)])
+fprintf('The SDP has  %d decision variables.\n',S.info.sossol_convex.sdpsol.conic.numel_g)
 fprintf('------------------------------------------------------------------------------------------\n')
 % get the onstraint violations for each SOS constraint; here, for the last
 % iteration

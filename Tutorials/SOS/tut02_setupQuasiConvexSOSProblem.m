@@ -146,8 +146,8 @@ fprintf('Mosek needed %d iterations and it took %d seconds for the last bisectio
 
 % check the problem size of the underlying conic problem (same size for all
 % problems)
-fprintf('The A matrix has %d rows and  %d columns.\n',[S.stats.iter{end}.conic.size_A(1),S.stats.iter{end}.conic.size_A(2)])
-fprintf('The SDP has  %d decision variables.\n',S.stats.iter{end}.conic.n_decVar)
+fprintf('The A matrix has %d rows and  %d columns.\n',[S.info.sossol.sdpsol.conic.size_a(1),S.info.sossol.sdpsol.conic.size_a(2)])
+fprintf('The SDP has  %d decision variables.\n',S.info.sossol.sdpsol.conic.numel_g)
 
 
 

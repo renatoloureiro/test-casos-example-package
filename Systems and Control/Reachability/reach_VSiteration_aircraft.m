@@ -205,7 +205,4 @@ for iter = 1:10
 
 end % end for-loop
 
-% total solver time over all iterations
-buildTime        = tmpbuildTime + sum(callTime1) + sum(callTime2);
-solverTime_total = sum(solvetime_all1) + sum(solvetime_all2);
 
