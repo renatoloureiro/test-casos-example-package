@@ -1,0 +1,91 @@
+name: Complete integration test
+
+on:
+# Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  MLM_LICENSE_TOKEN: ${{ secrets.MLM_LICENSE_TOKEN }}
+  MOSEKLM_LICENSE_FILE: ${{ secrets.MSK_LICENSE }}
+
+  # Set MOSEK version and paths
+  MOSEK_VERSION: "10.1.17"
+  MOSEK_INSTALL_DIR: ${{ github.workspace }}/mosek
+
+jobs:
+  example-package-check:
+    name: Example Package analysis
+    runs-on: ubuntu-latest
+  
+    permissions:
+      checks: write
+      contents: write
+      pull-requests: write
+      statuses: write 
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Setup MATLAB
+      - name: Setup MATLAB
+        uses: ./.github/actions/MATLAB-setup
+        with:
+          message: "Setup MATLAB"
+
+      # Get current version of CaSoS
+      - name: Setup CaSoS
+        uses: actions/checkout@v3
+        with:
+          repository: iFR-OFC/casos
+          path: casos
+
+      # Setup CasADi
+      - name: Setup CasADi
+        uses: ./.github/actions/CasADi-setup
+        with:
+          message: "Setup CasADi"
+
+      # Setup solvers
+      - name: Setup Solvers
+        uses: ./.github/actions/solvers-setup
+        with:
+          message: "Setup solvers (Mosek, sedumi)"
+
+      # Run all of the examples in the package
+      - name: Run example package
+        uses: matlab-actions/run-command@v2
+        with:
+          command: |
+            % add all necessary paths
+            addpath(genpath(pwd));
+
+            % run the scrypt to test all of the files
+            test_action
+
+      - name: check the out put
+        shell: bash 
+        run: |
+          cat example_results.md
+
+      # Upload results as artifacts
+      #- name: Upload test results
+      #  uses: actions/upload-artifact@v4
+      #  if: always()  # Run even if MATLAB commands fail
+      #  with:
+      #    name: example-results
+      #    path: |
+      #      example_results.md
+
+      # Add results to GitHub Step Summary
+      #- name: Add to GitHub Summary
+      #  if: always()
+      #  run: |
+      #    echo "# MATLAB Example Test Results" >> $GITHUB_STEP_SUMMARY
+      #    echo "" >> $GITHUB_STEP_SUMMARY
+      #    cat example_results.md >> $GITHUB_STEP_SUMMARY
+      #  shell: bash
