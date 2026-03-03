@@ -69,6 +69,10 @@ jobs:
             % run the scrypt to test all of the files
             test_action
 
+            if ~status
+              error('One or more examples failed. Check example_results.md for details.');
+            end
+
       - name: check the out put
         shell: bash 
         run: |
