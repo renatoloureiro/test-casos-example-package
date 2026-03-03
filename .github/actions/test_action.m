@@ -20,7 +20,7 @@ status = 1;
 % run each demo file
 for actidx=1:length(mfiles)
     try
-        out = evalc('run(mfiles(idx).name)');
+        out = evalc('run(mfiles(actidx).name)');
         fprintf('SUCCESS: %s \n', mfiles(actidx).name)
     catch ME
         status = 0;
