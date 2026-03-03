@@ -26,7 +26,7 @@
 %
 % ------------------------------------------------------------------------
 
-clc
+%clc
 clear
 import casos.toolboxes.sosopt.cleanpoly
 import casos.toolboxes.sosopt.pcontour
