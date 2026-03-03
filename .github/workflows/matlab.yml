@@ -64,8 +64,6 @@ jobs:
             % add all necessary paths
             addpath(genpath(pwd));
 
-            pwd
-
             % run the scrypt to test all of the files
             test_action
 

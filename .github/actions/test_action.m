@@ -11,10 +11,6 @@ mfiles = vertcat(mfiles1, mfiles2);
 % Write markdown file
 fid = fopen('example_results.md', 'w');
 
-% initialize markdown content
-md_content = '# EXAMPLE PACKAGE STATUS';
-fprintf(fid, '%s\n', md_content);
-
 status = 1;
 
 % run each demo file
