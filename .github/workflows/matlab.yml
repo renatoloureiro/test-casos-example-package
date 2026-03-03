@@ -3,7 +3,7 @@ name: Complete integration test
 on:
 # Triggers the workflow on push or pull request events but only for the main branch
   push:
-    branches: [main, dev]
+    branches: [main, action-test]
   pull_request:
     branches: [main]
   workflow_dispatch: {}
