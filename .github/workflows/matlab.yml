@@ -198,11 +198,12 @@ jobs:
             test_action
 
             if ~status
-              error('One or more examples failed with CaSoS ${{ matrix.casos-version }}. Check example_results.md for details.');
+              error('One or more examples failed with CaSoS. Check example_results.md for details.');
             end
 
       - name: Check the output
         shell: bash 
+        if: always()
         run: |
           if [ -f "example_results.md" ]; then
             echo "### Test Results for CaSoS ${{ matrix.casos-version }}" 
