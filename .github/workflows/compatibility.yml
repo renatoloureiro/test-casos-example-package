@@ -1,4 +1,4 @@
-name: Complete integration test
+name: Compatibility integration test
 
 # WORKFLOW PURPOSE:
 # This workflow tests compatibility between the current repository and all versions
