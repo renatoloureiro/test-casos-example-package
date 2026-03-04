@@ -1,0 +1,109 @@
+name: 'Solvers setup'
+description: 'Steps shared across jobs'
+runs:
+  using: "composite"
+  steps:
+    # Install system dependencies needed for MOSEK
+    - name: Install system dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y curl bzip2 tar
+
+    # Download and extract MOSEK
+    - name: Download and extract MOSEK
+      shell: bash
+      run: |
+        # Create MOSEK directory at root
+        mkdir -p ${{ env.MOSEK_INSTALL_DIR }}
+
+        # Download MOSEK tools for Linux x86
+        echo "Downloading MOSEK ${{ env.MOSEK_VERSION }} for Linux x86..."
+        curl -L "https://download.mosek.com/stable/${{ env.MOSEK_VERSION }}/mosektoolslinux64x86.tar.bz2" -o mosek.tar.bz2
+
+        # Extract the archive directly to the target directory
+        echo "Extracting MOSEK to ${{ env.MOSEK_INSTALL_DIR }}..."
+        tar -xjf mosek.tar.bz2 -C ${{ env.MOSEK_INSTALL_DIR }} --strip-components=1
+
+        # Clean up
+        rm -f mosek.tar.bz2
+
+        # List contents to verify
+        echo "MOSEK installed to: ${{ env.MOSEK_INSTALL_DIR }}"
+        ls -la ${{ env.MOSEK_INSTALL_DIR }}/
+
+    # Set up MOSEK license
+    - name: Set up MOSEK license
+      shell: bash
+      run: |
+        # Create .mosek directory in home
+        mkdir -p ~/mosek
+        # If license is provided via secret, create license file
+        if [ -n "${{ env.MOSEKLM_LICENSE_FILE }}" ]; then
+          echo "Creating license file from secret..."
+          echo "${{ env.MOSEKLM_LICENSE_FILE }}" > ~/mosek/mosek.lic
+          chmod 600 ~/mosek/mosek.lic
+          echo "MOSEK license file created at ~/mosek/mosek.lic"
+        else
+          echo "Warning: No MOSEK license secret found. Set MSK_LICENSE secret with your license content."
+        fi
+
+    # List files in tests directory
+    - name: List files generated
+      shell: bash
+      run: |
+        echo "=== FILES IN ROOT DIRECTORY ==="
+        echo "Contents in the root folder:"
+        ls -la
+
+    # Add MOSEK to MATLAB path and verify installation
+    - name: Configure MATLAB MOSEK path
+      uses: matlab-actions/run-command@v2
+      with:
+        command: |
+          % add folders and subforders to the path
+          addpath(genpath(pwd));
+
+          % Verify MOSEK installation
+          fprintf('\n--- Verifying MOSEK installation ---\n');
+          try
+              % Try to run mosekdiag
+              mosekdiag
+              fprintf('MOSEK verification completed successfully.\n');
+          catch ME
+              fprintf('MOSEK verification failed: %s\n', ME.message);
+          end
+
+          % Display final path
+          fprintf('\n--- Current MATLAB path (MOSEK related) ---\n');
+          pathCell = regexp(path, pathsep, 'split');
+          mosekPaths = pathCell(contains(pathCell, 'mosek', 'IgnoreCase', true));
+          if isempty(mosekPaths)
+              fprintf('No MOSEK paths found in MATLAB path\n');
+          else
+              for i = 1:length(mosekPaths)
+                  fprintf('%d: %s\n', i, mosekPaths{i});
+              end
+          end      
+
+   # Download Sedumi
+    - name: Checkout tools repo
+      uses: actions/checkout@v3
+      with:
+        repository: sqlp/sedumi 
+        path: sedumi
+
+    # Install Sedumi
+    - uses: matlab-actions/run-command@v2
+      with:
+        command: |
+          cd('sedumi'); 
+          try
+            % Capture all output
+            evalc('install_sedumi -rebuild');
+            fprintf('SeDuMi installed successfully\n');
+          catch ME
+            % Display error if installation fails
+            fprintf('Error installing SeDuMi: %s\n', ME.message);
+            rethrow(ME);
+          end

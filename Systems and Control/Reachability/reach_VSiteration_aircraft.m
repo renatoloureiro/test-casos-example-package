@@ -164,7 +164,7 @@ S2 = casos.sossol('S','mosek',sos2,opts);
 
 
 %% V-s-iteration
-for iter = 1:10
+for iter = 1:4
 
     %% gamma step
 
@@ -205,7 +205,4 @@ for iter = 1:10
 
 end % end for-loop
 
-% total solver time over all iterations
-buildTime        = tmpbuildTime + sum(callTime1) + sum(callTime2);
-solverTime_total = sum(solvetime_all1) + sum(solvetime_all2);
 

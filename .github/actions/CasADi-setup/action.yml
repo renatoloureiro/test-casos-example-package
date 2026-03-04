@@ -1,0 +1,22 @@
+name: 'CasADi setup'
+description: 'Steps shared across jobs'
+runs:
+  using: "composite"
+  steps:
+    # Install system dependencies needed for MOSEK
+    - name: Install system dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y curl bzip2 tar
+
+    # Download CasADi     
+    - name: Download CasADi 3.6.5 for MATLAB (Linux)
+      shell: bash 
+      run: |
+        wget -q https://github.com/casadi/casadi/releases/download/3.6.5/casadi-3.6.5-linux64-matlab2018b.zip
+        unzip -q casadi-3.6.5-linux64-matlab2018b.zip -d casadi-3.6.5
+
+    - name: Confirm
+      shell: bash 
+      run: ls -l

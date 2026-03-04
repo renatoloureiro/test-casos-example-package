@@ -1,0 +1,403 @@
+name: Compatibility integration test
+
+# WORKFLOW PURPOSE:
+# This workflow tests compatibility between the current repository and all versions
+# of the CaΣoS. It runs the example package against multiple CaΣoS releases to 
+# ensure backward compatibility and identify any breaking changes.
+
+on:
+  # TRIGGERS:
+  pull_request:
+    branches: [main]      # Run on PRs targeting main branch
+  workflow_dispatch: {}   # Allow manual triggering from GitHub UI
+
+# ENVIRONMENT VARIABLES:
+# These are available to all jobs in the workflow
+env:
+  # License tokens (MATLAB and Mosek)
+  MLM_LICENSE_TOKEN: ${{ secrets.MLM_LICENSE_TOKEN }}
+  MOSEKLM_LICENSE_FILE: ${{ secrets.MSK_LICENSE }}
+
+  # MOSEK solver configuration - fixed version for consistency
+  MOSEK_VERSION: "10.1.17"
+  MOSEK_INSTALL_DIR: ${{ github.workspace }}/mosek
+
+jobs:
+  # JOB: get-casos-releases
+  # PURPOSE: Fetch all CaΣoS releases from GitHub API and prepare version matrix
+  # OUTPUTS: JSON arrays of versions to test (all releases + main branch)
+  get-casos-releases:
+    runs-on: ubuntu-latest
+    outputs:
+      releases: ${{ steps.get-releases.outputs.releases }}                        # All releases
+      latest: ${{ steps.get-releases.outputs.latest }}                            # Latest release tag
+      versions-with-main: ${{ steps.include-main.outputs.versions-with-main }}    # All versions + main
+      pr-versions: ${{ steps.pr-versions.outputs.pr-versions }}                   # Limited set for PRs (latest + main)
+      has-releases: ${{ steps.check-releases.outputs.has-releases }}              # Flag if releases exist
+    steps:
+      - name: Get CaΣoS releases from GitHub
+        id: get-releases
+        continue-on-error: true   # Don't fail if GitHub API is temporarily unavailable
+        run: |
+          # Fetch all releases (up to 100) from the iFR-OFC/casos repository
+          # Using GitHub API with authentication token to avoid rate limiting
+          RELEASES=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/iFR-OFC/casos/releases?per_page=100" | \
+            jq -r '[.[].tag_name] | @json' 2>/dev/null || echo '[]')
+          
+          # Also fetch the latest release separately for PR
+          LATEST=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/iFR-OFC/casos/releases/latest" | \
+            jq -r '.tag_name // "main"' 2>/dev/null || echo "main")
+          
+          # Handle edge cases: if API fails or no releases exist, default to main only
+          if [ "$RELEASES" = "[]" ] || [ "$RELEASES" = "null" ] || [ -z "$RELEASES" ]; then
+            RELEASES='["main"]'
+          fi
+          
+          # Set outputs for other jobs to consume
+          echo "releases=$RELEASES" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "Found releases: $RELEASES"
+          echo "Latest release: $LATEST"
+      
+      - name: Check if we have valid releases
+        id: check-releases
+        run: |
+          # Validate that we actually have release data
+          if [ "${{ steps.get-releases.outputs.releases }}" != "[]" ] && [ "${{ steps.get-releases.outputs.releases }}" != "" ] && [ "${{ steps.get-releases.outputs.releases }}" != "null" ]; then
+            echo "has-releases=true" >> $GITHUB_OUTPUT
+          else
+            echo "has-releases=false" >> $GITHUB_OUTPUT
+            # Set default values if no releases found
+            echo "releases=['main']" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Include main branch in versions
+        id: include-main
+        run: |
+          # Get releases, default to ['main'] if empty
+          RELEASES='${{ steps.get-releases.outputs.releases }}'
+          if [ "$RELEASES" = "[]" ] || [ "$RELEASES" = "" ] || [ "$RELEASES" = "null" ]; then
+            RELEASES='["main"]'
+          fi
+          
+          # Add "main" branch to the list (for testing development version)
+          # Use 'unique' to avoid duplicates if main is already a release
+          WITH_MAIN=$(echo $RELEASES | jq -c '. + ["main"] | unique')
+          echo "versions-with-main=$WITH_MAIN" >> $GITHUB_OUTPUT
+          echo "All versions (including main): $WITH_MAIN"
+      
+      - name: Set PR versions (all releases + main)
+        id: pr-versions
+        run: |
+          # Get all releases with main already included
+          ALL_VERSIONS='${{ steps.include-main.outputs.versions-with-main }}'
+
+          # Use all versions for PR testing
+          if [ "$ALL_VERSIONS" != "" ] && [ "$ALL_VERSIONS" != "null" ]; then
+            PR_VERSIONS="$ALL_VERSIONS"
+          else
+            # Fallback to just main if something went wrong
+            PR_VERSIONS='["main"]'
+          fi
+
+          echo "pr-versions=$PR_VERSIONS" >> $GITHUB_OUTPUT
+          echo "PR versions: $PR_VERSIONS"
+
+  # JOB: example-package-check
+  # PURPOSE: Run the example package tests against each CaΣoS version
+  # This is the main test execution job that runs in parallel for each version
+  example-package-check:
+    name: Example Package analysis
+    needs: get-casos-releases
+    runs-on: ubuntu-latest
+    continue-on-error: true   # Don't fail the whole workflow if one version fails
+    strategy: 
+      fail-fast: false # Continue testing other versions even if one fails
+      matrix:
+        # Dynamic matrix: use all versions for full runs, but limit for PRs
+        casos-version: ${{ 
+          github.event_name == 'pull_request' && 
+          fromJSON(needs.get-casos-releases.outputs.pr-versions) || 
+          fromJSON(needs.get-casos-releases.outputs.versions-with-main)
+          }}
+  
+    # Grant necessary permissions for GitHub integrations
+    permissions:
+      checks: write
+      contents: write
+      pull-requests: write
+      statuses: write 
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Setup MATLAB environment using reusable action
+      - name: Setup MATLAB
+        uses: ./.github/actions/MATLAB-setup
+        with:
+          message: "Setup MATLAB"
+
+      # Cache CaΣoS builds to speed up subsequent runs
+      # Cache key includes version and OS to ensure correctness
+      - name: Cache CaΣoS builds
+        id: cache-casos
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.casos-cache
+            ./casos
+          key: casos-${{ matrix.casos-version }}-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            casos-${{ matrix.casos-version }}-${{ runner.os }}-
+            casos-${{ matrix.casos-version }}-
+      
+      # Only checkout if not in cache (cache miss)
+      - name: Checkout specific CaSoS version (if not cached)
+        if: steps.cache-casos.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4 
+        with:
+          repository: iFR-OFC/casos
+          path: casos-temp    # Temporary location before moving to final directory
+          ref: ${{ matrix.casos-version }}
+
+      # Setup CaΣoS with caching strategy
+      - name: Setup CaΣoS
+        run: |
+          # Create cache directory if it doesn't exist
+          mkdir -p ~/.casos-cache/${{ matrix.casos-version }}
+
+          # PRIORITY 1: Check if already set up in ./casos (from previous step)
+          if [ -d "casos" ] && [ "$(ls -A casos)" ]; then
+            echo "CaSoS already set up in ./casos"
+
+          # PRIORITY 2: Use fresh checkout if available
+          elif [ -d "casos-temp" ]; then
+            echo "Moving fresh checkout to ./casos"
+            mv casos-temp casos
+            # Populate cache for future runs
+            cp -r casos/* ~/.casos-cache/${{ matrix.casos-version }}/
+
+          # PRIORITY 3: Restore from cache if available
+          elif [ -d "$HOME/.casos-cache/${{ matrix.casos-version }}" ] && [ "$(ls -A $HOME/.casos-cache/${{ matrix.casos-version }})" ]; then
+            echo "Restoring from cache"
+            mkdir -p casos
+            cp -r $HOME/.casos-cache/${{ matrix.casos-version }}/* casos/
+
+          # PRIORITY 4: Last resort - clone directly from GitHub
+          else
+            echo "Cloning CaΣoS directly"
+            git clone --branch ${{ matrix.casos-version }} https://github.com/iFR-OFC/casos.git casos
+            # Cache for future runs
+            cp -r casos/* ~/.casos-cache/${{ matrix.casos-version }}/
+          fi
+
+          # Verify CaΣoS was set up correctly (fail fast if missing)
+          if [ ! -d "casos" ]; then
+            echo "Error: CaΣoS directory not found!"
+            exit 1
+          fi
+          echo "CaΣoS ${{ matrix.casos-version }} setup complete"
+          
+      # Setup CasADi using reusable action
+      - name: Setup CasADi
+        uses: ./.github/actions/CasADi-setup
+        with:
+          message: "Setup CasADi"
+
+      # Setup optimization solvers (Mosek, SeDuMi) using reusable action
+      - name: Setup Solvers
+        uses: ./.github/actions/solvers-setup
+        with:
+          message: "Setup solvers (Mosek, sedumi)"
+
+      # Run all examples in the package
+      # continue-on-error: true allows us to capture failure without stopping
+      - name: Run example package
+        uses: matlab-actions/run-command@v2
+        continue-on-error: true
+        with:
+          command: |
+            % Add all necessary paths
+            addpath(genpath(pwd));
+            addpath(genpath('casos')); 
+
+             % Execute the main test script
+            execute_examples
+
+            % Instead of throwing an error (which would stop the workflow),
+            % we save the status to a file for later processing
+            if ~status
+                % Write failure marker to file
+                fid = fopen('version_failed.txt', 'w');
+                fprintf(fid, 'failed with CaΣoS ${{ matrix.casos-version }}');
+                fclose(fid);
+
+                % Display warning but don't error
+                disp('WARNING: Examples failed. Check example_results.md for details.');
+            else
+                % Write success marker
+                fid = fopen('version_passed.txt', 'w');
+                fprintf(fid, 'passed with CaΣoS ${{ matrix.casos-version }}');
+                fclose(fid);
+            end
+
+      # Upload results as artifacts (always upload, not just on failure)
+      - name: Upload test results
+        if: always()  # Always upload, even on "failure" (allows debugging)
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-results-casos-${{ matrix.casos-version }}
+          path: |
+            example_results.md
+            *.log
+            version_failed.txt
+            version_passed.txt
+          if-no-files-found: warn   # Warn but don't fail if no files found
+
+      # Create version-specific status files for summary generation
+      - name: Create version status
+        if: always()
+        run: |
+          mkdir -p version-status
+          echo "${{ matrix.casos-version }}" > version-status/version.txt
+
+          # Determine status based on marker files or job status
+          if [ -f "version_passed.txt" ]; then
+            echo "✅" > version-status/status.txt
+            echo "✅ Passed" > version-status/message.txt
+            echo "passed" > version-status/result.txt
+          elif [ -f "version_failed.txt" ]; then
+            echo "❌" > version-status/status.txt
+            echo "❌ Failed" > version-status/message.txt
+            echo "failed" > version-status/result.txt
+          else
+            # Check job status as fallback
+            if [ "${{ job.status }}" == "success" ]; then
+              echo "✅" > version-status/status.txt
+              echo "✅ Passed (from job)" > version-status/message.txt
+              echo "passed" > version-status/result.txt
+            else
+              echo "❌" > version-status/status.txt
+              echo "❌ Failed (from job)" > version-status/message.txt
+              echo "failed" > version-status/result.txt
+            fi
+          fi
+
+      # Upload version status as separate artifact for summary job
+      - name: Upload version status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-status-${{ matrix.casos-version }}
+          path: version-status/
+
+  # JOB: create-compatibility-summary
+  # PURPOSE: Aggregate all test results into a single compatibility matrix
+  # This job runs after all test jobs complete and creates a summary report
+  create-compatibility-summary:
+    name: Create CaΣoS Compatibility
+    needs: [get-casos-releases, example-package-check]
+    if: always()    # Run even if some test jobs failed
+    runs-on: ubuntu-latest
+    steps:
+      # Download all version status artifacts
+      - name: Download version statuses
+        uses: actions/download-artifact@v4
+        with:
+          path: statuses
+          pattern: version-status-*
+          merge-multiple: false   # Keep separate directories to avoid overwrites
+
+      # Debug step to verify file structure
+      - name: Debug - List downloaded files
+        run: |
+          echo "=== Directory structure ==="
+          find statuses -type f -name "*.txt" | sort
+          echo "=== Content of status files ==="
+          find statuses -name "*.txt" -exec sh -c 'echo "File: {}"; cat {}; echo "---"' \;
+      
+      # Generate the compatibility matrix markdown file
+      - name: Create compatibility matrix
+        run: |
+          # Create the matrix file with evaluated date
+          echo "## CaΣoS Compatibility" > COMPATIBILITY_MATRIX.md
+          echo "" >> COMPATIBILITY_MATRIX.md
+          echo "Generated on: $(date)" >> COMPATIBILITY_MATRIX.md
+          echo "" >> COMPATIBILITY_MATRIX.md
+          echo "| CaΣoS Version | Status |" >> COMPATIBILITY_MATRIX.md
+          echo "|--------------|--------|" >> COMPATIBILITY_MATRIX.md
+
+          # Parse all version status files
+          if [ -d "statuses" ]; then
+            # Handle the case where artifacts are in separate directories
+            for status_dir in statuses/version-status-*/; do
+              if [ -d "$status_dir" ]; then
+                version_file=$(find "$status_dir" -name "version.txt" -type f | head -1)
+                message_file=$(find "$status_dir" -name "message.txt" -type f | head -1)
+
+                if [ -n "$version_file" ] && [ -n "$message_file" ]; then
+                  VERSION=$(cat "$version_file")
+                  MESSAGE=$(cat "$message_file")
+                  echo "| $VERSION | $MESSAGE |" >> COMPATIBILITY_MATRIX.md
+                  echo "Added: $VERSION - $MESSAGE"
+                fi
+              fi
+            done
+          fi
+
+          # Validate that we actually added data
+          ROWS=$(wc -l < COMPATIBILITY_MATRIX.md)
+          if [ $ROWS -le 6 ]; then      # Only header lines (6 lines) means no data
+            echo "Warning: No version data was added to the matrix!"
+            echo "This might indicate an issue with artifact upload or download."
+
+            # Add placeholder to indicate missing data
+            echo "| No data | No data |" >> COMPATIBILITY_MATRIX.md
+          else
+            # Sort the matrix by version number (natural sort)
+            # Keep header (first 6 lines), sort the rest
+            head -n 6 COMPATIBILITY_MATRIX.md > COMPATIBILITY_MATRIX_SORTED.md
+            tail -n +7 COMPATIBILITY_MATRIX.md | sort -V >> COMPATIBILITY_MATRIX_SORTED.md
+            mv COMPATIBILITY_MATRIX_SORTED.md COMPATIBILITY_MATRIX.md
+          fi
+
+          # Display the matrix for debugging
+          echo ""
+          echo "=== Final Compatibility Matrix ==="
+          cat COMPATIBILITY_MATRIX.md
+
+      # Add matrix to GitHub Actions step summary (visible in UI)
+      - name: Add to GitHub Step Summary
+        run: |
+          cat COMPATIBILITY_MATRIX.md >> $GITHUB_STEP_SUMMARY
+
+      # For PRs, update the PR description with the compatibility matrix
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const matrix = fs.readFileSync('COMPATIBILITY_MATRIX.md', 'utf8');
+
+            // create/update the PR description
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              body: matrix
+            });
+
+      # Clean up temporary artifacts to save storage space
+      - name: Delete version status artifacts
+        if: always()
+        uses: geekyeggo/delete-artifact@v4
+        with:
+          name: version-status-*
+          failOnError: false    # Don't fail if some artifacts are already deleted
+          useGlob: true         # Use glob pattern matching

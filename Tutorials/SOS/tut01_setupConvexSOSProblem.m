@@ -137,8 +137,8 @@ switch sdp_solver
 end
 
 % check the problem size of the underlying conic problem
-fprintf('The A matrix has %d rows and  %d columns\n',[S.stats.conic.size_A(1),S.stats.conic.size_A(2)])
-fprintf('The SDP has  %d decision variables\n',S.stats.conic.n_decVar)
+fprintf('The A matrix has %d rows and  %d columns\n',[S.info.sdpsol.conic.size_a(1),S.info.sdpsol.conic.size_a(2)]);
+fprintf('The SDP has  %d decision variables\n',S.info.sdpsol.conic.numel_g);
 
 %% Step 7) Extracting the polynomial solution
 
