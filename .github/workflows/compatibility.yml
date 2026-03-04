@@ -227,7 +227,7 @@ jobs:
             addpath(genpath('casos')); 
 
              % Execute the main test script
-            test_action
+            execute_examples
 
             % Instead of throwing an error (which would stop the workflow),
             % we save the status to a file for later processing
