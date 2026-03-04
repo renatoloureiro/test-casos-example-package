@@ -251,7 +251,7 @@ jobs:
 
   # Create compatibility summary
   create-compatibility-summary:
-    name: Create CaΣoS Compatibility Summary
+    name: Create CaΣoS Compatibility
     needs: [get-casos-releases, example-package-check]
     if: always()
     runs-on: ubuntu-latest
@@ -277,8 +277,8 @@ jobs:
           echo "" >> COMPATIBILITY_MATRIX.md
           echo "Generated on: $(date)" >> COMPATIBILITY_MATRIX.md
           echo "" >> COMPATIBILITY_MATRIX.md
-          echo "| CaΣoS Version | Status | Test Date |" >> COMPATIBILITY_MATRIX.md
-          echo "|--------------|--------|-----------|" >> COMPATIBILITY_MATRIX.md
+          echo "| CaΣoS Version | Status |" >> COMPATIBILITY_MATRIX.md
+          echo "|--------------|--------|" >> COMPATIBILITY_MATRIX.md
 
           # Add all tested versions
           if [ -d "statuses" ]; then
@@ -293,7 +293,7 @@ jobs:
                 if [ -n "$version_file" ] && [ -n "$message_file" ]; then
                   VERSION=$(cat "$version_file")
                   MESSAGE=$(cat "$message_file")
-                  echo "| $VERSION | $MESSAGE | $(date +'%Y-%m-%d %H:%M') |" >> COMPATIBILITY_MATRIX.md
+                  echo "| $VERSION | $MESSAGE |" >> COMPATIBILITY_MATRIX.md
                   echo "Added: $VERSION - $MESSAGE"
                 fi
               fi
@@ -313,7 +313,7 @@ jobs:
             echo "This might indicate an issue with artifact upload or download."
 
             # Add a placeholder message
-            echo "| No data | No data | No data |" >> COMPATIBILITY_MATRIX.md
+            echo "| No data | No data |" >> COMPATIBILITY_MATRIX.md
           else
             # Sort the matrix (keep header, sort the rest)
             head -n 6 COMPATIBILITY_MATRIX.md > COMPATIBILITY_MATRIX_SORTED.md
