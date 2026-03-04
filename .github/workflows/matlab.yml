@@ -230,11 +230,15 @@ jobs:
         if: always()
         run: |
           STATUS="${{ job.status }}"
+          mkdir -p version-status
           if [ "$STATUS" == "success" ]; then
-            echo "CaSoS ${{ matrix.casos-version }} tests passed" >> version_status.txt
+            echo "✅" > version-status/status.txt
+            echo "✅ Passed" > version-status/message.txt
           else
-            echo "CaSoS ${{ matrix.casos-version }} tests failed" >> version_status.txt
+            echo "❌" > version-status/status.txt
+            echo "❌ Failed" > version-status/message.txt
           fi
+          echo "${{ matrix.casos-version }}" > version-status/version.txt
 
       # Upload version status
       - name: Upload version status
@@ -271,14 +275,19 @@ jobs:
           
           # Add all tested versions
           if [ -d "statuses" ]; then
-            for status_file in statuses/version-status-*.txt; do
-              if [ -f "$status_file" ]; then
-                VERSION=$(basename "$status_file" | sed 's/version-status-//' | sed 's/.txt//')
-                STATUS=$(cat "$status_file")
-                echo "| $VERSION | $STATUS | $(date) |" >> COMPATIBILITY_MATRIX.md
+            for status_dir in statuses/*/; do
+              if [ -f "${status_dir}version.txt" ] && [ -f "${status_dir}message.txt" ]; then
+                VERSION=$(cat "${status_dir}version.txt")
+                MESSAGE=$(cat "${status_dir}message.txt")
+                echo "| $VERSION | $MESSAGE |" >> COMPATIBILITY_MATRIX.md
               fi
             done
           fi
+          
+          # Sort the matrix
+          head -n 2 COMPATIBILITY_MATRIX.md > COMPATIBILITY_MATRIX_SORTED.md
+          tail -n +3 COMPATIBILITY_MATRIX.md | sort -V >> COMPATIBILITY_MATRIX_SORTED.md
+          mv COMPATIBILITY_MATRIX_SORTED.md COMPATIBILITY_MATRIX.md
           
           # Display the matrix
           cat COMPATIBILITY_MATRIX.md
