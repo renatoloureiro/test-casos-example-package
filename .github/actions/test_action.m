@@ -3,7 +3,7 @@ addpath(genpath(pwd));
 
 % get all the .m files containing the examples
 mfiles1 = dir('./Tutorials/**/*.m');
-mfiles2 = dir('./Systems and Control/**/*.m');
+%mfiles2 = dir('./Systems and Control/**/*.m');
 
 % combine them
 mfiles = vertcat(mfiles1, mfiles2);

@@ -198,7 +198,7 @@ jobs:
             test_action
 
             if ~status
-              error('One or more examples failed with CaSoS. Check example_results.md for details.');
+              error('One or more examples failed with CaSoS ${{ matrix.casos-version }}. Check example_results.md for details.');
             end
 
       - name: Check the output
@@ -247,7 +247,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: version-status-${{ matrix.casos-version }}
-          path: version_status.txt
+          path: version-status/
 
   # Create compatibility summary
   create-compatibility-summary:
