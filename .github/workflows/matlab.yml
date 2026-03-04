@@ -6,6 +6,8 @@ on:
     branches: [main, action-test]
   pull_request:
     branches: [main]
+  #schedule:
+  #  - cron: '0 0 * * 0'
   workflow_dispatch: {}
 
 env:
@@ -17,9 +19,48 @@ env:
   MOSEK_INSTALL_DIR: ${{ github.workspace }}/mosek
 
 jobs:
+  # Get all CaSoS releases
+  get-casos-releases:
+    runs-on: ubuntu-latest
+    outputs:
+      releases: ${{ steps.get-releases.outputs.releases }}
+      latest: ${{ steps.get-releases.outputs.latest }}
+    steps:
+      - name: Get CaSoS releases from GitHub
+        id: get-releases
+        run: |
+          # Fetch all releases from iFR-OFC/casos
+          RELEASES=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/iFR-OFC/casos/releases?per_page=100" | \
+            jq -r '[.[].tag_name] | @json')
+          
+          # Also get the latest release
+          LATEST=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/iFR-OFC/casos/releases/latest" | \
+            jq -r '.tag_name // "main"')
+          
+          echo "releases=$RELEASES" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          
+          # Debug output
+          echo "Found releases: $RELEASES"
+          echo "Latest release: $LATEST"
+
+  # run CaSoS on example package
   example-package-check:
     name: Example Package analysis
+    needs: get-casos-releases
+    #if: false
     runs-on: ubuntu-latest
+    strategy: 
+      fail-fast: false # continue even if one version fails
+      matrix:
+        # Use all releases, but limit for PRs to avoid excessive testing
+        casos-version: ${{ fromJSON(github.event_name == 'pull_request' && 
+          format('["{0}"]', needs.get-casos-releases.outputs.latest) || 
+          needs.get-casos-releases.outputs.releases) }}
   
     permissions:
       checks: write
@@ -38,12 +79,62 @@ jobs:
           message: "Setup MATLAB"
 
       # Get current version of CaSoS
-      - name: Setup CaSoS
-        uses: actions/checkout@v3
+      #- name: Setup CaSoS
+      #  uses: actions/checkout@v3
+      #  with:
+      #    repository: iFR-OFC/casos
+      #    path: casos
+
+      - name: Cache CaSoS builds
+        id: cache-casos
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.casos-cache
+            ./casos
+          key: casos-${{ matrix.casos-version }}-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            casos-${{ matrix.casos-version }}-${{ runner.os }}-
+            casos-${{ matrix.casos-version }}-
+      
+      - name: Checkout specific CaSoS version (if not cached)
+        if: steps.cache-casos.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4  # Updated to v4
         with:
           repository: iFR-OFC/casos
-          path: casos
+          path: casos-temp
+          ref: ${{ matrix.casos-version }}
 
+      - name: Setup CaSoS
+        run: |
+          # Create cache directory if it doesn't exist
+          mkdir -p ~/.casos-cache/${{ matrix.casos-version }}
+
+          if [ -d "casos" ] && [ "$(ls -A casos)" ]; then
+            echo "CaSoS already set up in ./casos"
+          elif [ -d "casos-temp" ]; then
+            echo "Moving fresh checkout to ./casos"
+            mv casos-temp casos
+            # Cache the checkout
+            cp -r casos/* ~/.casos-cache/${{ matrix.casos-version }}/
+          elif [ -d "$HOME/.casos-cache/${{ matrix.casos-version }}" ] && [ "$(ls -A $HOME/.casos-cache/${{ matrix.casos-version }})" ]; then
+            echo "Restoring from cache"
+            mkdir -p casos
+            cp -r $HOME/.casos-cache/${{ matrix.casos-version }}/* casos/
+          else
+            echo "Cloning CaSoS directly"
+            git clone --branch ${{ matrix.casos-version }} https://github.com/iFR-OFC/casos.git casos
+            # Cache for future runs
+            cp -r casos/* ~/.casos-cache/${{ matrix.casos-version }}/
+          fi
+
+          # Verify CaSoS was set up correctly
+          if [ ! -d "casos" ]; then
+            echo "Error: CaSoS directory not found!"
+            exit 1
+          fi
+          echo "CaSoS ${{ matrix.casos-version }} setup complete"
+          
       # Setup CasADi
       - name: Setup CasADi
         uses: ./.github/actions/CasADi-setup
@@ -63,31 +154,54 @@ jobs:
           command: |
             % add all necessary paths
             addpath(genpath(pwd));
+            addpath(genpath('casos')); 
 
             % run the scrypt to test all of the files
             test_action
 
             if ~status
-              error('One or more examples failed. Check example_results.md for details.');
+              error('One or more examples failed with CaSoS ${{ matrix.casos-version }}. Check example_results.md for details.');
             end
 
-      - name: check the out put
+      - name: Check the output
         shell: bash 
         run: |
-          cat example_results.md
+          if [ -f "example_results.md" ]; then
+            echo "### Test Results for CaSoS ${{ matrix.casos-version }}" 
+            cat example_results.md
+            echo ""
+            echo "## Summary for CaSoS ${{ matrix.casos-version }}" >> $GITHUB_STEP_SUMMARY
+            cat example_results.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Warning: example_results.md not found for CaSoS ${{ matrix.casos-version }}"
+          fi
 
       # Upload results as artifacts
       - name: Upload test results
         uses: actions/upload-artifact@v4
-        if: always()  # Run even if MATLAB commands fail
+        if: always()
         with:
-          name: example-results
+          name: example-results-casos-${{ matrix.casos-version }}
           path: |
             example_results.md
+            *.log
+          if-no-files-found: warn
 
-      # Add results to GitHub Step Summary
-      - name: Add to GitHub Summary
+      # Create version-specific badge/status
+      - name: Create version status
         if: always()
         run: |
-          cat example_results.md >> $GITHUB_STEP_SUMMARY
-        shell: bash
+          STATUS="${{ job.status }}"
+          if [ "$STATUS" == "success" ]; then
+            echo "CaSoS ${{ matrix.casos-version }} tests passed" >> version_status.txt
+          else
+            echo "CaSoS ${{ matrix.casos-version }} tests failed" >> version_status.txt
+          fi
+
+      # Upload version status
+      - name: Upload version status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-status-${{ matrix.casos-version }}
+          path: version_status.txt
