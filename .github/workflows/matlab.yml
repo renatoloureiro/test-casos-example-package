@@ -202,17 +202,17 @@ jobs:
             end
 
       - name: Check the output
-        shell: bash 
+        shell: bash
         if: always()
         run: |
           if [ -f "example_results.md" ]; then
-            echo "### Test Results for CaΣoS ${{ matrix.casos-version }}" 
+            echo "::group:: Test Results for CaΣoS ${{ matrix.casos-version }}"
             cat example_results.md
-            echo ""
+            echo "::endgroup::"
             echo "## Summary for CaΣoS ${{ matrix.casos-version }}" >> $GITHUB_STEP_SUMMARY
             cat example_results.md >> $GITHUB_STEP_SUMMARY
           else
-            echo "Warning: example_results.md not found for CaΣoS ${{ matrix.casos-version }}"
+            echo " Warning: example_results.md not found for CaΣoS ${{ matrix.casos-version }}"
           fi
 
       # Upload results as artifacts
@@ -273,7 +273,7 @@ jobs:
       - name: Create compatibility matrix
         run: |
           # Create the matrix file with evaluated date
-          echo "# CaΣoS Compatibility Matrix" > COMPATIBILITY_MATRIX.md
+          echo "## CaΣoS Compatibility" > COMPATIBILITY_MATRIX.md
           echo "" >> COMPATIBILITY_MATRIX.md
           echo "Generated on: $(date)" >> COMPATIBILITY_MATRIX.md
           echo "" >> COMPATIBILITY_MATRIX.md
@@ -334,8 +334,6 @@ jobs:
 
       - name: Add to GitHub Step Summary
         run: |
-          echo "## CaΣoS Compatibility Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           cat COMPATIBILITY_MATRIX.md >> $GITHUB_STEP_SUMMARY
 
       - name: Comment PR with results
