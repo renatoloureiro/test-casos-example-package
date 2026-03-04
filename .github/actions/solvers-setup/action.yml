@@ -1,11 +1,5 @@
 name: 'Solvers setup'
 description: 'Steps shared across jobs'
-inputs:
-  message:
-    description: 'A message to display'
-    required: true
-    default: 'Hello'
-
 runs:
   using: "composite"
   steps:
@@ -75,9 +69,9 @@ runs:
           try
               % Try to run mosekdiag
               mosekdiag
-              fprintf('✓ MOSEK verification completed successfully.\n');
+              fprintf('MOSEK verification completed successfully.\n');
           catch ME
-              fprintf('⚠ MOSEK verification failed: %s\n', ME.message);
+              fprintf('MOSEK verification failed: %s\n', ME.message);
           end
 
           % Display final path
@@ -113,9 +107,3 @@ runs:
             fprintf('Error installing SeDuMi: %s\n', ME.message);
             rethrow(ME);
           end
-
-    # Get Clarabel
-    # ### TODO ###
-
-    # Get SCS
-    # ### TODO ###
