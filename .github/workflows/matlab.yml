@@ -204,9 +204,9 @@ jobs:
       # Upload results as artifacts
       - name: Upload test results
         uses: actions/upload-artifact@v4
-        if: always()
+        if: failure()
         with:
-          name: example-results-casos-${{ matrix.casos-version }}
+          name: example-results-casos-${{ matrix.casos-version }}-failed
           path: |
             example_results.md
             *.log
@@ -311,12 +311,6 @@ jobs:
           echo ""
           echo "=== Final Compatibility Matrix ==="
           cat COMPATIBILITY_MATRIX.md
-
-      - name: Upload compatibility matrix
-        uses: actions/upload-artifact@v4
-        with:
-          name: compatibility-matrix
-          path: COMPATIBILITY_MATRIX.md
 
       - name: Add to GitHub Step Summary
         run: |
