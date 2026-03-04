@@ -43,24 +43,38 @@ jobs:
           
           echo "releases=$RELEASES" >> $GITHUB_OUTPUT
           echo "latest=$LATEST" >> $GITHUB_OUTPUT
-          
-          # Debug output
           echo "Found releases: $RELEASES"
           echo "Latest release: $LATEST"
+
+      - name: Include main branch in versions
+        id: include-main
+        run: |
+          # Add "main" to the releases array
+          WITH_MAIN=$(echo '${{ steps.get-releases.outputs.releases }}' | jq -c '. + ["main"]')
+          echo "versions-with-main=$WITH_MAIN" >> $GITHUB_OUTPUT
+          echo "All versions (including main): $WITH_MAIN"
+
+      - name: Set PR versions (latest + main)
+        id: pr-versions
+        run: |
+          PR_VERSIONS='["${{ steps.get-releases.outputs.latest }}", "main"]'
+          echo "pr-versions=$PR_VERSIONS" >> $GITHUB_OUTPUT
+          echo "PR versions: $PR_VERSIONS"
 
   # run CaSoS on example package
   example-package-check:
     name: Example Package analysis
     needs: get-casos-releases
-    #if: false
     runs-on: ubuntu-latest
     strategy: 
       fail-fast: false # continue even if one version fails
       matrix:
         # Use all releases, but limit for PRs to avoid excessive testing
-        casos-version: ${{ fromJSON(github.event_name == 'pull_request' && 
-          format('["{0}"]', needs.get-casos-releases.outputs.latest) || 
-          needs.get-casos-releases.outputs.releases) }}
+        casos-version: ${{ fromJSON(
+          github.event_name == 'pull_request' && 
+          needs.get-casos-releases.outputs.pr-versions || 
+          needs.get-casos-releases.outputs.versions-with-main
+          ) }}
   
     permissions:
       checks: write
@@ -77,13 +91,6 @@ jobs:
         uses: ./.github/actions/MATLAB-setup
         with:
           message: "Setup MATLAB"
-
-      # Get current version of CaSoS
-      #- name: Setup CaSoS
-      #  uses: actions/checkout@v3
-      #  with:
-      #    repository: iFR-OFC/casos
-      #    path: casos
 
       - name: Cache CaSoS builds
         id: cache-casos
@@ -205,3 +212,66 @@ jobs:
         with:
           name: version-status-${{ matrix.casos-version }}
           path: version_status.txt
+
+  # Create compatibility summary
+  create-compatibility-summary:
+    name: Create CaSoS Compatibility Summary
+    needs: [get-casos-releases, example-package-check]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download version statuses
+        uses: actions/download-artifact@v4
+        with:
+          path: statuses
+          pattern: version-status-*
+          merge-multiple: true
+      
+      - name: Create compatibility matrix
+        run: |
+          cat > COMPATIBILITY_MATRIX.md << 'EOF'
+          # CaSoS Compatibility Matrix
+          
+          Generated on: $(date)
+          
+          | CaSoS Version | Status | Test Date |
+          |--------------|--------|-----------|
+          EOF
+          
+          # Add all tested versions
+          if [ -d "statuses" ]; then
+            for status_file in statuses/version-status-*.txt; do
+              if [ -f "$status_file" ]; then
+                VERSION=$(basename "$status_file" | sed 's/version-status-//' | sed 's/.txt//')
+                STATUS=$(cat "$status_file")
+                echo "| $VERSION | $STATUS | $(date) |" >> COMPATIBILITY_MATRIX.md
+              fi
+            done
+          fi
+          
+          # Display the matrix
+          cat COMPATIBILITY_MATRIX.md
+          
+          # Add to GitHub step summary
+          cat COMPATIBILITY_MATRIX.md >> $GITHUB_STEP_SUMMARY
+      
+      - name: Upload compatibility matrix
+        uses: actions/upload-artifact@v4
+        with:
+          name: compatibility-matrix
+          path: COMPATIBILITY_MATRIX.md
+      
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const matrix = fs.readFileSync('COMPATIBILITY_MATRIX.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## CaSoS Compatibility Test Results\n\n${matrix}`
+            });

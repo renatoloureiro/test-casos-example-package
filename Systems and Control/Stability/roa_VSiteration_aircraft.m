@@ -124,7 +124,7 @@ callTime3 = zeros(100,1);
 bval_old = [];
 
 %% V-s-iteration
-for iter = 1:100
+for iter = 1:5
 
     %% gamma step
 

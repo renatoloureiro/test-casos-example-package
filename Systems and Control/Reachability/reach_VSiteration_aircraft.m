@@ -164,7 +164,7 @@ S2 = casos.sossol('S','mosek',sos2,opts);
 
 
 %% V-s-iteration
-for iter = 1:10
+for iter = 1:4
 
     %% gamma step
 
