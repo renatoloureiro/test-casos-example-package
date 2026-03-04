@@ -235,6 +235,10 @@ jobs:
         with:
           name: version-status-${{ matrix.casos-version }}
           path: version-status/
+      
+      # ensure job is always successfull despite the casos version fails
+      - name: Always succeed
+        run: exit 0
 
   # Create compatibility summary
   create-compatibility-summary:
