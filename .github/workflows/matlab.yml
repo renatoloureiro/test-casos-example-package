@@ -185,6 +185,7 @@ jobs:
       # Run all of the examples in the package
       - name: Run example package
         uses: matlab-actions/run-command@v2
+        continue-on-error: true
         with:
           command: |
             % add all necessary paths
@@ -194,35 +195,62 @@ jobs:
             % run the scrypt to test all of the files
             test_action
 
+            % Save the status to a file instead of throwing error
             if ~status
-              error('One or more examples failed with CaΣoS ${{ matrix.casos-version }}. Check example_results.md for details.');
+                % Write failure marker to file
+                fid = fopen('version_failed.txt', 'w');
+                fprintf(fid, 'failed with CaΣoS ${{ matrix.casos-version }}');
+                fclose(fid);
+
+                % Display warning but don't error
+                disp('WARNING: Examples failed. Check example_results.md for details.');
+            else
+                % Write success marker
+                fid = fopen('version_passed.txt', 'w');
+                fprintf(fid, 'passed with CaΣoS ${{ matrix.casos-version }}');
+                fclose(fid);
             end
 
-      # Upload results as artifacts
+      # Upload results as artifacts (always upload, not just on failure)
       - name: Upload test results
+        if: always()  # Always upload, even on "failure"
         uses: actions/upload-artifact@v4
-        if: failure()
         with:
-          name: example-results-casos-${{ matrix.casos-version }}-failed
+          name: example-results-casos-${{ matrix.casos-version }}
           path: |
             example_results.md
             *.log
+            version_failed.txt
+            version_passed.txt
           if-no-files-found: warn
 
-      # Create version-specific badge/status
+      # Create version-specific badge/status based on file existence
       - name: Create version status
         if: always()
         run: |
-          STATUS="${{ job.status }}"
           mkdir -p version-status
-          if [ "$STATUS" == "success" ]; then
+          echo "${{ matrix.casos-version }}" > version-status/version.txt
+
+          if [ -f "version_passed.txt" ]; then
             echo "✅" > version-status/status.txt
             echo "✅ Passed" > version-status/message.txt
-          else
+            echo "passed" > version-status/result.txt
+          elif [ -f "version_failed.txt" ]; then
             echo "❌" > version-status/status.txt
             echo "❌ Failed" > version-status/message.txt
+            echo "failed" > version-status/result.txt
+          else
+            # Check job status as fallback
+            if [ "${{ job.status }}" == "success" ]; then
+              echo "✅" > version-status/status.txt
+              echo "✅ Passed (from job)" > version-status/message.txt
+              echo "passed" > version-status/result.txt
+            else
+              echo "❌" > version-status/status.txt
+              echo "❌ Failed (from job)" > version-status/message.txt
+              echo "failed" > version-status/result.txt
+            fi
           fi
-          echo "${{ matrix.casos-version }}" > version-status/version.txt
 
       # Upload version status
       - name: Upload version status
@@ -231,10 +259,6 @@ jobs:
         with:
           name: version-status-${{ matrix.casos-version }}
           path: version-status/
-      
-      # ensure job is always successfull despite the casos version fails
-      - name: Always succeed
-        run: exit 0
 
   # Create compatibility summary
   create-compatibility-summary:
