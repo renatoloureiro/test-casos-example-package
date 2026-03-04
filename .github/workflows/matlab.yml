@@ -97,6 +97,7 @@ jobs:
     name: Example Package analysis
     needs: get-casos-releases
     runs-on: ubuntu-latest
+    continue-on-error: true  
     strategy: 
       fail-fast: false # continue even if one version fails
       matrix:
@@ -198,7 +199,7 @@ jobs:
             test_action
 
             if ~status
-              warning('One or more examples failed with CaΣoS ${{ matrix.casos-version }}. Check example_results.md for details.');
+              error('One or more examples failed with CaΣoS ${{ matrix.casos-version }}. Check example_results.md for details.');
             end
 
       # Upload results as artifacts
