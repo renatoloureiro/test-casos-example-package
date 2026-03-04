@@ -324,11 +324,12 @@ jobs:
             const fs = require('fs');
             const matrix = fs.readFileSync('COMPATIBILITY_MATRIX.md', 'utf8');
 
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
+            // create/update the PR description
+            await github.rest.pulls.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `${matrix}`
+              pull_number: context.issue.number,
+              body: matrix
             });
     
       - name: Delete version status artifacts
