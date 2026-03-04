@@ -328,7 +328,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## CaΣoS Compatibility Test Results\n\n${matrix}`
+              body: `${matrix}`
             });
     
       - name: Delete version status artifacts
