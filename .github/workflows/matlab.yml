@@ -19,7 +19,7 @@ env:
   MOSEK_INSTALL_DIR: ${{ github.workspace }}/mosek
 
 jobs:
-  # Get all CaSoS releases and include main branch
+  # Get all CaΣoS releases and include main branch
   get-casos-releases:
     runs-on: ubuntu-latest
     outputs:
@@ -29,7 +29,7 @@ jobs:
       pr-versions: ${{ steps.pr-versions.outputs.pr-versions }}
       has-releases: ${{ steps.check-releases.outputs.has-releases }}
     steps:
-      - name: Get CaSoS releases from GitHub
+      - name: Get CaΣoS releases from GitHub
         id: get-releases
         continue-on-error: true
         run: |
@@ -92,7 +92,7 @@ jobs:
           echo "pr-versions=$PR_VERSIONS" >> $GITHUB_OUTPUT
           echo "PR versions: $PR_VERSIONS"
 
-  # run CaSoS on example package
+  # run CaΣoS on example package
   example-package-check:
     name: Example Package analysis
     needs: get-casos-releases
@@ -123,7 +123,7 @@ jobs:
         with:
           message: "Setup MATLAB"
 
-      - name: Cache CaSoS builds
+      - name: Cache CaΣoS builds
         id: cache-casos
         uses: actions/cache@v3
         with:
@@ -143,7 +143,7 @@ jobs:
           path: casos-temp
           ref: ${{ matrix.casos-version }}
 
-      - name: Setup CaSoS
+      - name: Setup CaΣoS
         run: |
           # Create cache directory if it doesn't exist
           mkdir -p ~/.casos-cache/${{ matrix.casos-version }}
@@ -160,18 +160,18 @@ jobs:
             mkdir -p casos
             cp -r $HOME/.casos-cache/${{ matrix.casos-version }}/* casos/
           else
-            echo "Cloning CaSoS directly"
+            echo "Cloning CaΣoS directly"
             git clone --branch ${{ matrix.casos-version }} https://github.com/iFR-OFC/casos.git casos
             # Cache for future runs
             cp -r casos/* ~/.casos-cache/${{ matrix.casos-version }}/
           fi
 
-          # Verify CaSoS was set up correctly
+          # Verify CaΣoS was set up correctly
           if [ ! -d "casos" ]; then
-            echo "Error: CaSoS directory not found!"
+            echo "Error: CaΣoS directory not found!"
             exit 1
           fi
-          echo "CaSoS ${{ matrix.casos-version }} setup complete"
+          echo "CaΣoS ${{ matrix.casos-version }} setup complete"
           
       # Setup CasADi
       - name: Setup CasADi
@@ -198,7 +198,7 @@ jobs:
             test_action
 
             if ~status
-              error('One or more examples failed with CaSoS ${{ matrix.casos-version }}. Check example_results.md for details.');
+              error('One or more examples failed with CaΣoS ${{ matrix.casos-version }}. Check example_results.md for details.');
             end
 
       - name: Check the output
@@ -206,13 +206,13 @@ jobs:
         if: always()
         run: |
           if [ -f "example_results.md" ]; then
-            echo "### Test Results for CaSoS ${{ matrix.casos-version }}" 
+            echo "### Test Results for CaΣoS ${{ matrix.casos-version }}" 
             cat example_results.md
             echo ""
-            echo "## Summary for CaSoS ${{ matrix.casos-version }}" >> $GITHUB_STEP_SUMMARY
+            echo "## Summary for CaΣoS ${{ matrix.casos-version }}" >> $GITHUB_STEP_SUMMARY
             cat example_results.md >> $GITHUB_STEP_SUMMARY
           else
-            echo "Warning: example_results.md not found for CaSoS ${{ matrix.casos-version }}"
+            echo "Warning: example_results.md not found for CaΣoS ${{ matrix.casos-version }}"
           fi
 
       # Upload results as artifacts
@@ -251,7 +251,7 @@ jobs:
 
   # Create compatibility summary
   create-compatibility-summary:
-    name: Create CaSoS Compatibility Summary
+    name: Create CaΣoS Compatibility Summary
     needs: [get-casos-releases, example-package-check]
     if: always()
     runs-on: ubuntu-latest
@@ -261,47 +261,83 @@ jobs:
         with:
           path: statuses
           pattern: version-status-*
-          merge-multiple: true
+          merge-multiple: false
+
+      - name: Debug - List downloaded files
+        run: |
+          echo "=== Directory structure ==="
+          find statuses -type f -name "*.txt" | sort
+          echo "=== Content of status files ==="
+          find statuses -name "*.txt" -exec sh -c 'echo "File: {}"; cat {}; echo "---"' \;
       
       - name: Create compatibility matrix
         run: |
-          cat > COMPATIBILITY_MATRIX.md << 'EOF'
-          # CaSoS Compatibility Matrix
-          
-          Generated on: $(date)
-          
-          | CaSoS Version | Status | Test Date |
-          |--------------|--------|-----------|
-          EOF
-          
+          # Create the matrix file with evaluated date
+          echo "# CaΣoS Compatibility Matrix" > COMPATIBILITY_MATRIX.md
+          echo "" >> COMPATIBILITY_MATRIX.md
+          echo "Generated on: $(date)" >> COMPATIBILITY_MATRIX.md
+          echo "" >> COMPATIBILITY_MATRIX.md
+          echo "| CaΣoS Version | Status | Test Date |" >> COMPATIBILITY_MATRIX.md
+          echo "|--------------|--------|-----------|" >> COMPATIBILITY_MATRIX.md
+
           # Add all tested versions
           if [ -d "statuses" ]; then
-            for status_dir in statuses/*/; do
-              if [ -f "${status_dir}version.txt" ] && [ -f "${status_dir}message.txt" ]; then
-                VERSION=$(cat "${status_dir}version.txt")
-                MESSAGE=$(cat "${status_dir}message.txt")
-                echo "| $VERSION | $MESSAGE |" >> COMPATIBILITY_MATRIX.md
+            # Try different possible directory structures
+            # Structure 1: statuses/version-status-v1.0.0/version.txt
+            for status_dir in statuses/version-status-*/; do
+              if [ -d "$status_dir" ]; then
+                # Look for the files we created
+                version_file=$(find "$status_dir" -name "version.txt" -type f | head -1)
+                message_file=$(find "$status_dir" -name "message.txt" -type f | head -1)
+
+                if [ -n "$version_file" ] && [ -n "$message_file" ]; then
+                  VERSION=$(cat "$version_file")
+                  MESSAGE=$(cat "$message_file")
+                  echo "| $VERSION | $MESSAGE | $(date +'%Y-%m-%d %H:%M') |" >> COMPATIBILITY_MATRIX.md
+                  echo "Added: $VERSION - $MESSAGE"
+                fi
               fi
             done
+
+            # Structure 2: Direct files in statuses/ (with merge-multiple: true)
+            if [ -f "statuses/version.txt" ]; then
+              # This would only have one version - not ideal
+              echo "Warning: Found merged files, may only have one version"
+            fi
           fi
-          
-          # Sort the matrix
-          head -n 2 COMPATIBILITY_MATRIX.md > COMPATIBILITY_MATRIX_SORTED.md
-          tail -n +3 COMPATIBILITY_MATRIX.md | sort -V >> COMPATIBILITY_MATRIX_SORTED.md
-          mv COMPATIBILITY_MATRIX_SORTED.md COMPATIBILITY_MATRIX.md
-          
+
+          # Check if we added any rows
+          ROWS=$(wc -l < COMPATIBILITY_MATRIX.md)
+          if [ $ROWS -le 4 ]; then
+            echo "Warning: No version data was added to the matrix!"
+            echo "This might indicate an issue with artifact upload or download."
+
+            # Add a placeholder message
+            echo "| No data | No data | No data |" >> COMPATIBILITY_MATRIX.md
+          else
+            # Sort the matrix (keep header, sort the rest)
+            head -n 4 COMPATIBILITY_MATRIX.md > COMPATIBILITY_MATRIX_SORTED.md
+            tail -n +5 COMPATIBILITY_MATRIX.md | sort -V >> COMPATIBILITY_MATRIX_SORTED.md
+            mv COMPATIBILITY_MATRIX_SORTED.md COMPATIBILITY_MATRIX.md
+          fi
+
           # Display the matrix
+          echo ""
+          echo "=== Final Compatibility Matrix ==="
           cat COMPATIBILITY_MATRIX.md
-          
-          # Add to GitHub step summary
-          cat COMPATIBILITY_MATRIX.md >> $GITHUB_STEP_SUMMARY
-      
+
       - name: Upload compatibility matrix
         uses: actions/upload-artifact@v4
         with:
           name: compatibility-matrix
           path: COMPATIBILITY_MATRIX.md
-      
+
+      - name: Add to GitHub Step Summary
+        run: |
+          echo "## CaΣoS Compatibility Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat COMPATIBILITY_MATRIX.md >> $GITHUB_STEP_SUMMARY
+
       - name: Comment PR with results
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v6
@@ -309,10 +345,10 @@ jobs:
           script: |
             const fs = require('fs');
             const matrix = fs.readFileSync('COMPATIBILITY_MATRIX.md', 'utf8');
-            
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## CaSoS Compatibility Test Results\n\n${matrix}`
+              body: `## CaΣoS Compatibility Test Results\n\n${matrix}`
             });
