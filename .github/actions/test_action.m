@@ -6,7 +6,8 @@ mfiles1 = dir('./Tutorials/**/*.m');
 %mfiles2 = dir('./Systems and Control/**/*.m');
 
 % combine them
-mfiles = vertcat(mfiles1, mfiles2);
+%mfiles = vertcat(mfiles1, mfiles2);
+mfiles = mfiles1;
 
 % Write markdown file
 fid = fopen('example_results.md', 'w');
