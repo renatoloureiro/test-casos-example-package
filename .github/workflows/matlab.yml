@@ -308,7 +308,7 @@ jobs:
 
           # Check if we added any rows
           ROWS=$(wc -l < COMPATIBILITY_MATRIX.md)
-          if [ $ROWS -le 4 ]; then
+          if [ $ROWS -le 6 ]; then
             echo "Warning: No version data was added to the matrix!"
             echo "This might indicate an issue with artifact upload or download."
 
@@ -316,8 +316,8 @@ jobs:
             echo "| No data | No data | No data |" >> COMPATIBILITY_MATRIX.md
           else
             # Sort the matrix (keep header, sort the rest)
-            head -n 4 COMPATIBILITY_MATRIX.md > COMPATIBILITY_MATRIX_SORTED.md
-            tail -n +5 COMPATIBILITY_MATRIX.md | sort -V >> COMPATIBILITY_MATRIX_SORTED.md
+            head -n 6 COMPATIBILITY_MATRIX.md > COMPATIBILITY_MATRIX_SORTED.md
+            tail -n +7 COMPATIBILITY_MATRIX.md | sort -V >> COMPATIBILITY_MATRIX_SORTED.md
             mv COMPATIBILITY_MATRIX_SORTED.md COMPATIBILITY_MATRIX.md
           fi
 
