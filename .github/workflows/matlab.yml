@@ -201,19 +201,19 @@ jobs:
               error('One or more examples failed with CaΣoS ${{ matrix.casos-version }}. Check example_results.md for details.');
             end
 
-      - name: Check the output
-        shell: bash
-        if: always()
-        run: |
-          if [ -f "example_results.md" ]; then
-            echo "::group:: Test Results for CaΣoS ${{ matrix.casos-version }}"
-            cat example_results.md
-            echo "::endgroup::"
-            echo "## Summary for CaΣoS ${{ matrix.casos-version }}" >> $GITHUB_STEP_SUMMARY
-            cat example_results.md >> $GITHUB_STEP_SUMMARY
-          else
-            echo " Warning: example_results.md not found for CaΣoS ${{ matrix.casos-version }}"
-          fi
+      #- name: Check the output
+      #  shell: bash
+      #  if: always()
+      #  run: |
+      #    if [ -f "example_results.md" ]; then
+      #      echo "::group:: Test Results for CaΣoS ${{ matrix.casos-version }}"
+      #      cat example_results.md
+      #      echo "::endgroup::"
+      #      echo "## Summary for CaΣoS ${{ matrix.casos-version }}" >> $GITHUB_STEP_SUMMARY
+      #      cat example_results.md >> $GITHUB_STEP_SUMMARY
+      #    else
+      #      echo " Warning: example_results.md not found for CaΣoS ${{ matrix.casos-version }}"
+      #    fi
 
       # Upload results as artifacts
       - name: Upload test results
