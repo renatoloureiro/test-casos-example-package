@@ -483,13 +483,18 @@ jobs:
       (github.event_name == 'pull_request_target' && github.event.pull_request.merged == true) ||
       github.event_name == 'workflow_dispatch'
     
+    # Add write permissions
+    permissions:
+      contents: write
+      pull-requests: read
+    
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: true
           fetch-depth: 0
-          # Important: checkout the merged commit
-          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+          # For PR merges, checkout the target branch (main/master)
+          ref: ${{ github.event.pull_request.base.ref || github.ref_name }}
       
       # Get the latest version from find-latest-successful job
       - name: Get latest version
@@ -596,20 +601,45 @@ jobs:
             badge.md
           retention-days: 7  
 
-      # Commit and push badge to repository (only on main branch)
-      - name: Commit badge
+      # Commit and push badge to repository
+      - name: Commit and push badge
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Get the current branch name
+          if [ "${{ github.event_name }}" = "pull_request_target" ]; then
+            BRANCH="${{ github.event.pull_request.base.ref }}"
+          else
+            BRANCH="${{ github.ref_name }}"
+          fi
           
-          # Move badge to root or docs folder
+          echo "Working on branch: $BRANCH"
+          
+          # Ensure we're on the correct branch
+          git checkout $BRANCH || git checkout -b $BRANCH
+          
+          # Pull latest changes to avoid conflicts
+          git pull origin $BRANCH || true
+          
+          # Copy badges to root
           cp badge.svg badge-latest.svg 2>/dev/null || true
           cp badge.json badge-latest.json 2>/dev/null || true
           
-          # Add files to git
-          git add badge.svg badge.json badge-latest.svg badge-latest.json 2>/dev/null || true
-          git commit -m "Update compatibility badge [skip ci]" || echo "No changes to commit"
-          git push || echo "No changes to push"
+          # Stage files
+          git add badge.svg badge.json badge-latest.svg badge-latest.json README.md 2>/dev/null || true
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            # Configure git
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            
+            # Commit changes
+            git commit -m "Update compatibility badge to version ${{ steps.get_version.outputs.latest_version }} [skip ci]"
+            
+            # Push changes
+            git push origin $BRANCH
+          fi
 
       # Update README with badge link
       - name: Update README
