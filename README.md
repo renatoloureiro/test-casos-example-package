@@ -6,7 +6,7 @@
 
 ----
 
-![Latest Compatible](https://img.shields.io/badge/Latest%20Compatible-v1.0.1-pre.3-green?style=for-the-badge![Latest Compatible](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/renatoloureiro/test-casos-example-package/main/badge.json)logo=githubactions)
+![Latest Compatible](https://img.shields.io/badge/Latest%20Compatible-v1.0.1-pre.3-green?style=for-the-badge![Latest Compatible](https://img.shields.io/badge/Latest%20Compatible-v1.0.1-pre.3-green?style=for-the-badge![Latest Compatible](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/renatoloureiro/test-casos-example-package/main/badge.json)logo=githubactions)logo=githubactions)
 
 The **CaΣoS example package** contains tutorials, application examples, and implementations from the literature. The purpose is to provide an easy on-boarding with [CaΣoS](https://github.com/ifr-acso/casos), a nonlinear sum-of-squares optimization suite based on the symbolic framework of CasADi. New examples are continuously added.
 
