@@ -39,17 +39,17 @@ jobs:
         id: get-releases
         continue-on-error: true   # Don't fail if GitHub API is temporarily unavailable
         run: |
-          # Fetch all releases (up to 100) from the iFR-OFC/casos repository
+          # Fetch all releases (up to 100) from the casos-opti/casos repository
           # Using GitHub API with authentication token to avoid rate limiting
           RELEASES=$(curl -s \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/iFR-OFC/casos/releases?per_page=100" | \
+            "https://api.github.com/repos/casos-opti/casos/releases?per_page=100" | \
             jq -r '[.[].tag_name] | @json' 2>/dev/null || echo '[]')
           
           # Also fetch the latest release separately for PR
           LATEST=$(curl -s \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/iFR-OFC/casos/releases/latest" | \
+            "https://api.github.com/repos/casos-opti/casos/releases/latest" | \
             jq -r '.tag_name // "main"' 2>/dev/null || echo "main")
           
           # Handle edge cases: if API fails or no releases exist, default to main only
@@ -161,7 +161,7 @@ jobs:
         if: steps.cache-casos.outputs.cache-hit != 'true'
         uses: actions/checkout@v4 
         with:
-          repository: iFR-OFC/casos
+          repository: casos-opti/casos
           path: casos-temp    # Temporary location before moving to final directory
           ref: ${{ matrix.casos-version }}
 
@@ -191,7 +191,7 @@ jobs:
           # PRIORITY 4: Last resort - clone directly from GitHub
           else
             echo "Cloning CaΣoS directly"
-            git clone --branch ${{ matrix.casos-version }} https://github.com/iFR-OFC/casos.git casos
+            git clone --branch ${{ matrix.casos-version }} https://github.com/casos-opti/casos.git casos
             # Cache for future runs
             cp -r casos/* ~/.casos-cache/${{ matrix.casos-version }}/
           fi
