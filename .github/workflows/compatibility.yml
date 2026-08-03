@@ -369,6 +369,114 @@ jobs:
           echo "❌ No successful versions found"
         fi
     
+  # JOB: create-compatibility-summary
+  # PURPOSE: Aggregate all test results into a single compatibility matrix
+  # This job runs after all test jobs complete and creates a summary report
+  create-compatibility-summary:
+    name: Create CaΣoS Compatibility
+    needs: [get-casos-releases, example-package-check]
+    if: always()    # Run even if some test jobs failed
+    runs-on: ubuntu-latest
+    steps:
+      # Download all version status artifacts
+      - name: Download version statuses
+        uses: actions/download-artifact@v4
+        with:
+          path: statuses
+          pattern: version-status-*
+          merge-multiple: false   # Keep separate directories to avoid overwrites
+
+      # Debug step to verify file structure
+      - name: Debug - List downloaded files
+        run: |
+          echo "=== Directory structure ==="
+          find statuses -type f -name "*.txt" | sort
+          echo "=== Content of status files ==="
+          find statuses -name "*.txt" -exec sh -c 'echo "File: {}"; cat {}; echo "---"' \;
+      
+      # Generate the compatibility matrix markdown file
+      - name: Create compatibility matrix
+        run: |
+          # Create the matrix file with evaluated date
+          echo "## CaΣoS Compatibility" > COMPATIBILITY_MATRIX.md
+          echo "" >> COMPATIBILITY_MATRIX.md
+          echo "Generated on: $(date)" >> COMPATIBILITY_MATRIX.md
+          echo "" >> COMPATIBILITY_MATRIX.md
+          echo "| CaΣoS Version | Status |" >> COMPATIBILITY_MATRIX.md
+          echo "|--------------|--------|" >> COMPATIBILITY_MATRIX.md
+
+          # Parse all version status files
+          if [ -d "statuses" ]; then
+            # Handle the case where artifacts are in separate directories
+            for status_dir in statuses/version-status-*/; do
+              if [ -d "$status_dir" ]; then
+                version_file=$(find "$status_dir" -name "version.txt" -type f | head -1)
+                message_file=$(find "$status_dir" -name "message.txt" -type f | head -1)
+
+                if [ -n "$version_file" ] && [ -n "$message_file" ]; then
+                  VERSION=$(cat "$version_file")
+                  MESSAGE=$(cat "$message_file")
+                  echo "| $VERSION | $MESSAGE |" >> COMPATIBILITY_MATRIX.md
+                  echo "Added: $VERSION - $MESSAGE"
+                fi
+              fi
+            done
+          fi
+
+          # Validate that we actually added data
+          ROWS=$(wc -l < COMPATIBILITY_MATRIX.md)
+          if [ $ROWS -le 6 ]; then      # Only header lines (6 lines) means no data
+            echo "Warning: No version data was added to the matrix!"
+            echo "This might indicate an issue with artifact upload or download."
+
+            # Add placeholder to indicate missing data
+            echo "| No data | No data |" >> COMPATIBILITY_MATRIX.md
+          else
+            # Sort the matrix by version number (natural sort)
+            # Keep header (first 6 lines), sort the rest
+            head -n 6 COMPATIBILITY_MATRIX.md > COMPATIBILITY_MATRIX_SORTED.md
+            tail -n +7 COMPATIBILITY_MATRIX.md | sort -V >> COMPATIBILITY_MATRIX_SORTED.md
+            mv COMPATIBILITY_MATRIX_SORTED.md COMPATIBILITY_MATRIX.md
+          fi
+
+          # Display the matrix for debugging
+          echo ""
+          echo "=== Final Compatibility Matrix ==="
+          cat COMPATIBILITY_MATRIX.md
+
+      # Add matrix to GitHub Actions step summary (visible in UI)
+      - name: Add to GitHub Step Summary
+        run: |
+          cat COMPATIBILITY_MATRIX.md >> $GITHUB_STEP_SUMMARY
+
+      # For PRs, update the PR description with the compatibility matrix
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const matrix = fs.readFileSync('COMPATIBILITY_MATRIX.md', 'utf8');
+
+            // create/update the PR description
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              body: matrix
+            });
+
+      # add an automatic table with the version or at least a badge stating the latest working version
+
+      # Clean up temporary artifacts to save storage space
+      - name: Delete version status artifacts
+        if: always()
+        uses: geekyeggo/delete-artifact@v4
+        with:
+          name: version-status-*
+          failOnError: false    # Don't fail if some artifacts are already deleted
+          useGlob: true         # Use glob pattern matching
+
   # NEW JOB: Create Badge (fixed)
   create-badge:
     name: Create Compatibility Badge
@@ -541,111 +649,3 @@ jobs:
             git commit -m "Update README compatibility badge [skip ci]" || echo "No README changes"
             git push || echo "No README changes to push"
           fi
-
-  # JOB: create-compatibility-summary
-  # PURPOSE: Aggregate all test results into a single compatibility matrix
-  # This job runs after all test jobs complete and creates a summary report
-  create-compatibility-summary:
-    name: Create CaΣoS Compatibility
-    needs: [get-casos-releases, example-package-check]
-    if: always()    # Run even if some test jobs failed
-    runs-on: ubuntu-latest
-    steps:
-      # Download all version status artifacts
-      - name: Download version statuses
-        uses: actions/download-artifact@v4
-        with:
-          path: statuses
-          pattern: version-status-*
-          merge-multiple: false   # Keep separate directories to avoid overwrites
-
-      # Debug step to verify file structure
-      - name: Debug - List downloaded files
-        run: |
-          echo "=== Directory structure ==="
-          find statuses -type f -name "*.txt" | sort
-          echo "=== Content of status files ==="
-          find statuses -name "*.txt" -exec sh -c 'echo "File: {}"; cat {}; echo "---"' \;
-      
-      # Generate the compatibility matrix markdown file
-      - name: Create compatibility matrix
-        run: |
-          # Create the matrix file with evaluated date
-          echo "## CaΣoS Compatibility" > COMPATIBILITY_MATRIX.md
-          echo "" >> COMPATIBILITY_MATRIX.md
-          echo "Generated on: $(date)" >> COMPATIBILITY_MATRIX.md
-          echo "" >> COMPATIBILITY_MATRIX.md
-          echo "| CaΣoS Version | Status |" >> COMPATIBILITY_MATRIX.md
-          echo "|--------------|--------|" >> COMPATIBILITY_MATRIX.md
-
-          # Parse all version status files
-          if [ -d "statuses" ]; then
-            # Handle the case where artifacts are in separate directories
-            for status_dir in statuses/version-status-*/; do
-              if [ -d "$status_dir" ]; then
-                version_file=$(find "$status_dir" -name "version.txt" -type f | head -1)
-                message_file=$(find "$status_dir" -name "message.txt" -type f | head -1)
-
-                if [ -n "$version_file" ] && [ -n "$message_file" ]; then
-                  VERSION=$(cat "$version_file")
-                  MESSAGE=$(cat "$message_file")
-                  echo "| $VERSION | $MESSAGE |" >> COMPATIBILITY_MATRIX.md
-                  echo "Added: $VERSION - $MESSAGE"
-                fi
-              fi
-            done
-          fi
-
-          # Validate that we actually added data
-          ROWS=$(wc -l < COMPATIBILITY_MATRIX.md)
-          if [ $ROWS -le 6 ]; then      # Only header lines (6 lines) means no data
-            echo "Warning: No version data was added to the matrix!"
-            echo "This might indicate an issue with artifact upload or download."
-
-            # Add placeholder to indicate missing data
-            echo "| No data | No data |" >> COMPATIBILITY_MATRIX.md
-          else
-            # Sort the matrix by version number (natural sort)
-            # Keep header (first 6 lines), sort the rest
-            head -n 6 COMPATIBILITY_MATRIX.md > COMPATIBILITY_MATRIX_SORTED.md
-            tail -n +7 COMPATIBILITY_MATRIX.md | sort -V >> COMPATIBILITY_MATRIX_SORTED.md
-            mv COMPATIBILITY_MATRIX_SORTED.md COMPATIBILITY_MATRIX.md
-          fi
-
-          # Display the matrix for debugging
-          echo ""
-          echo "=== Final Compatibility Matrix ==="
-          cat COMPATIBILITY_MATRIX.md
-
-      # Add matrix to GitHub Actions step summary (visible in UI)
-      - name: Add to GitHub Step Summary
-        run: |
-          cat COMPATIBILITY_MATRIX.md >> $GITHUB_STEP_SUMMARY
-
-      # For PRs, update the PR description with the compatibility matrix
-      - name: Comment PR with results
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const fs = require('fs');
-            const matrix = fs.readFileSync('COMPATIBILITY_MATRIX.md', 'utf8');
-
-            // create/update the PR description
-            await github.rest.pulls.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-              body: matrix
-            });
-
-      # add an automatic table with the version or at least a badge stating the latest working version
-
-      # Clean up temporary artifacts to save storage space
-      - name: Delete version status artifacts
-        if: always()
-        uses: geekyeggo/delete-artifact@v4
-        with:
-          name: version-status-*
-          failOnError: false    # Don't fail if some artifacts are already deleted
-          useGlob: true         # Use glob pattern matching
