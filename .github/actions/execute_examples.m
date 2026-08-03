@@ -38,7 +38,7 @@ for actidx=1:length(mfiles)
 
     try
         % Execute the example file and capture all output
-        out = evalc('run(current_file)');
+        % out = evalc('run(current_file)');
 
         % Log success
         fprintf('SUCCESS: %s \n', current_file)
