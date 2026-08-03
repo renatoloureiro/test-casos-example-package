@@ -470,16 +470,6 @@ jobs:
               body: matrix
             });
 
-      # add an automatic table with the version or at least a badge stating the latest working version
-
-      # Clean up temporary artifacts to save storage space
-      - name: Delete version status artifacts
-        if: always()
-        uses: geekyeggo/delete-artifact@v4
-        with:
-          name: version-status-*
-          failOnError: false    # Don't fail if some artifacts are already deleted
-          useGlob: true         # Use glob pattern matching
 
   # NEW JOB: Create Badge (fixed)
   create-badge:
