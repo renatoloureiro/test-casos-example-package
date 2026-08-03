@@ -1,4 +1,4 @@
-% This script searches and executes all example MATLAB files in the
+% This script discovers and executes all example MATLAB files in the
 % 'Tutorials' and 'Systems and Control' directories, capturing results 
 % and generating a markdown report.
 % It's designed for CI/CD integration but can also be run locally.
@@ -38,7 +38,7 @@ for actidx=1:length(mfiles)
 
     try
         % Execute the example file and capture all output
-        % out = evalc('run(current_file)');
+        out = evalc('run(current_file)');
 
         % Log success
         fprintf('SUCCESS: %s \n', current_file)
