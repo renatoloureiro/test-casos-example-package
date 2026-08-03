@@ -1,4 +1,4 @@
-% This script discovers and executes all example MATLAB files in the
+% This script searches and executes all example MATLAB files in the
 % 'Tutorials' and 'Systems and Control' directories, capturing results 
 % and generating a markdown report.
 % It's designed for CI/CD integration but can also be run locally.
